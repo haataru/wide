@@ -4,6 +4,7 @@ target_sources(widedb_unit_tests PRIVATE
     test_io_buffer.cpp
     test_async_file.cpp
     test_sstable.cpp
+    test_bloom_filter.cpp
 )
 
 target_link_libraries(widedb_unit_tests PRIVATE
