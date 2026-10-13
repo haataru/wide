@@ -1,6 +1,7 @@
 #include "storage/bloom_filter.h"
 #define XXH_INLINE_ALL
 #include "xxhash.h"
+#include <algorithm>
 
 namespace widedb::storage {
 
@@ -52,6 +53,18 @@ auto BloomFilter::may_contain(Slice key) const -> bool {
         h += delta;
     }
     return true;
+}
+
+auto BloomFilter::empty() const -> bool {
+    return data_.empty();
+}
+
+auto BloomFilter::size_bytes() const -> size_t {
+    return data_.size();
+}
+
+void BloomFilter::clear() {
+    std::fill(data_.begin(), data_.end(), 0);
 }
 
 auto BloomFilter::data() const -> Slice {

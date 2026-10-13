@@ -17,6 +17,9 @@ public:
 
     void add(Slice key);
     auto may_contain(Slice key) const -> bool;
+    auto empty() const -> bool;
+    auto size_bytes() const -> size_t;
+    void clear();
 
     auto data() const -> Slice;
 
