@@ -30,5 +30,3 @@ _deps/
 *.vlog
 checkpoint.meta*
 vlog/
-
-docs/
