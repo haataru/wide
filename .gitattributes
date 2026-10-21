@@ -1,0 +1,10 @@
+# The project targets Linux only, so LF is the one and only line ending.
+# Without this file git uses the platform default (CRLF on Windows), and the
+# same file looks different depending on who checked it out.
+* text=auto eol=lf
+
+# Files that must never be converted.
+*.sst   binary
+*.o     binary
+*.a     binary
+*.so    binary

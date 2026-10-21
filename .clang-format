@@ -1,0 +1,50 @@
+---
+# Style helper for the WideDB storage engine.
+#
+# NOTE: this file is NOT enforced by CI on purpose.
+# The existing code deliberately uses a couple of constructs that clang-format
+# cannot reproduce (it always strips trailing whitespace and always splits
+# "stmt; stmt;" into two lines), so running it over the codebase would produce
+# a large diff for zero functional gain.
+#
+# Use it manually on new files if you want:
+#   clang-format -i path/to/new_file.cpp
+#
+# If you ever want CI to enforce it, apply the formatting once in a separate
+# commit ("style: apply clang-format") and then enable the check job.
+Language: Cpp
+BasedOnStyle: LLVM
+
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ColumnLimit: 120
+
+# public:/private:/protected: sit at the same level as the class body
+AccessModifierOffset: -4
+BreakBeforeBraces: Attach
+
+# constructor initializers on their own line, indented by 4:
+#   Foo::Foo(int x)
+#       : x_(x) {
+BreakConstructorInitializers: BeforeColon
+ContinuationIndentWidth: 4
+
+# short one-liners are welcome
+AllowShortFunctionsOnASingleLine: Inline
+AllowShortIfStatementsOnASingleLine: AllIfsAndElse
+AllowShortLoopsOnASingleLine: true
+AllowShortBlocksOnASingleLine: Never
+AllowShortCaseLabelsOnASingleLine: true
+IndentCaseLabels: true
+
+PointerAlignment: Left
+DerivePointerAlignment: false
+SpaceBeforeParens: ControlStatements
+SpacesBeforeTrailingComments: 1
+SpaceAfterTemplateKeyword: true
+
+# keep the include order as written by hand (project header first)
+SortIncludes: Never
+IncludeBlocks: Preserve
+ReflowComments: false
