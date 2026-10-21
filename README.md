@@ -2,8 +2,8 @@
 
 [![C++](https://img.shields.io/badge/C%2B%2B-26-blue.svg?logo=cplusplus)](https://isocpp.org)
 [![License](https://img.shields.io/badge/license-GPLv3-green.svg?logo=gnu)](https://www.gnu.org/licenses/gpl-3.0)
-[![Status](https://img.shields.io/badge/status-early%20access-orange.svg)](https://github.com/your-org/wide)
-[![Build](https://img.shields.io/badge/build-passing-brightgreen.svg?logo=github)](https://github.com/haataru/wide/actions)
+[![Status](https://img.shields.io/badge/status-early%20access-orange.svg)](https://github.com/haataru/wide)
+[![CI](https://github.com/haataru/wide/actions/workflows/ci.yml/badge.svg)](https://github.com/haataru/wide/actions/workflows/ci.yml)
 
 ## Overview
 
