@@ -1,13 +1,13 @@
 # Wide
 
-[![C++](https://img.shields.io/badge/C%2B%2B-26-blue.svg?logo=cplusplus)](https://isocpp.org)
+[![C++](https://img.shields.io/badge/C%2B%2B-23-blue.svg?logo=cplusplus)](https://isocpp.org)
 [![License](https://img.shields.io/badge/license-GPLv3-green.svg?logo=gnu)](https://www.gnu.org/licenses/gpl-3.0)
 [![Status](https://img.shields.io/badge/status-early%20access-orange.svg)](https://github.com/haataru/wide)
 [![CI](https://github.com/haataru/wide/actions/workflows/ci.yml/badge.svg)](https://github.com/haataru/wide/actions/workflows/ci.yml)
 
 ## Overview
 
-A hyper-optimized, zero-copy, C++26 immutable block storage SDK designed as a
+A hyper-optimized, zero-copy, C++23 immutable block storage SDK designed as a
 foundational layer for building high-performance database engines.
 
 This SDK provides a bare-metal interface for writing and reading Sorted String
@@ -20,7 +20,7 @@ with ~0 ms overhead.
 
 ## Key Features
 
-- **C++26 & Zero-Cost Abstractions**: Written in modern C++ without exceptions.
+- **C++23 & Zero-Cost Abstractions**: Written in modern C++ without exceptions.
   Errors are handled via `std::expected`.
 - **Pure `io_uring`**: Fully asynchronous I/O framework (`EventLoop`,
   `AsyncFile`) leveraging `io_uring` for submission and completion queue polling.
@@ -38,7 +38,7 @@ with ~0 ms overhead.
 
 ## Building
 
-Requires Linux (for `io_uring`), GCC 15+ or Clang 20+, and CMake 3.25+.
+Requires Linux (for `io_uring`), GCC 13+ or Clang 18+, and CMake 3.25+.
 
 ```bash
 mkdir build && cd build

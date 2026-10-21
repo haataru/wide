@@ -24,7 +24,8 @@ enum class StorageError {
     kNotFound,
     kCorruption,
     kChecksumMismatch,
-    kIoError
+    kIoError,
+    kValueTooLarge
 };
 
 const std::error_category& storage_error_category();
