@@ -16,6 +16,7 @@ public:
             case StorageError::kCorruption: return "Data corruption";
             case StorageError::kChecksumMismatch: return "Checksum mismatch";
             case StorageError::kIoError: return "IO error";
+            case StorageError::kValueTooLarge: return "Value too large";
             default: return "Unknown storage error";
         }
     }
@@ -73,16 +74,26 @@ void SstableBuilder::flush_data_block() {
 }
 
 auto SstableBuilder::add(Slice key, Slice value, Timestamp ts) -> std::expected<void, std::error_code> {
-    filter_.add(key);
+    // Per-entry size: key + value + timestamp + 2 length prefixes,
+    // plus 2 bytes for this entry's restart point.
+    // It does NOT include the 8 block-level bytes: 4 for the entry count
+    // at the block start and 4 for the restart count at the block end.
     size_t entry_size = 4 + key.size() + 4 + value.size() + sizeof(Timestamp) + 2;
-    
+
+    // Block is full: flush it to make room (+8 is the block overhead above).
     if (current_block_size_ + entry_size + 8 > 4096 && !current_block_entries_.empty()) {
         flush_data_block();
     }
-    
+
+    // Still does not fit even into an empty block -> the value is too large.
+    if (current_block_size_ + entry_size + 8 > 4096) {
+        return std::unexpected(make_error_code(StorageError::kValueTooLarge));
+    }
+
+    filter_.add(key);
     current_block_entries_.push_back({
-        std::string(reinterpret_cast<const char*>(key.data()), key.size()), 
-        std::vector<uint8_t>(value.begin(), value.end()), 
+        std::string(reinterpret_cast<const char*>(key.data()), key.size()),
+        std::vector<uint8_t>(value.begin(), value.end()),
         ts
     });
     current_block_size_ += entry_size;
