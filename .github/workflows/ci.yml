@@ -1,0 +1,185 @@
+name: CI
+
+# Triggers:
+#   - push to a branch we develop on
+#   - pull request into main
+#   - manual run from the Actions tab
+on:
+  push:
+    branches:
+      - main
+      - "feature/**"
+      - "fix/**"
+      - "chore/**"
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# The workflow only needs read access to the repository contents.
+permissions:
+  contents: read
+
+# A new push to the same branch cancels the previous run:
+# no point in finishing a build of code that nobody needs anymore.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Release build by default: Debug builds of this project are 5-10x slower
+  # (see README), and CI is not a place for benchmarks.
+  CMAKE_BUILD_TYPE: Release
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Main job: configure -> build -> test. Must always be green.
+  # ---------------------------------------------------------------------------
+  build:
+    name: Build & Test (GCC)
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            cmake \
+            ninja-build \
+            ccache \
+            liburing-dev \
+            libnuma-dev
+
+      - name: Show compiler version
+        run: g++ --version
+
+      - name: Restore ccache
+        # ccache caches compiler output, so the second run does not have to
+        # rebuild gtest/spdlog/xxhash from scratch.
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: ccache-${{ hashFiles('src/**', 'tests/**', 'CMakeLists.txt') }}
+          restore-keys: ccache-
+
+      - name: Check io_uring availability
+        # io_uring is a Linux-only syscall and is NOT available inside
+        # containers with the default Docker seccomp profile. We probe it
+        # explicitly, so a missing kernel feature produces a readable message
+        # instead of a confusing "Operation not permitted" inside the tests.
+        run: |
+          cat > /tmp/uring_probe.c <<'EOF'
+          #include <liburing.h>
+          #include <stdio.h>
+          #include <string.h>
+          int main(void) {
+              struct io_uring ring;
+              int rc = io_uring_queue_init(8, &ring, 0);
+              if (rc < 0) {
+                  printf("io_uring is NOT available: %s\n", strerror(-rc));
+                  return 1;
+              }
+              io_uring_queue_exit(&ring);
+              printf("io_uring is available\n");
+              return 0;
+          }
+          EOF
+          gcc /tmp/uring_probe.c -luring -o /tmp/uring_probe
+          /tmp/uring_probe
+
+      - name: Configure
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=${{ env.CMAKE_BUILD_TYPE }} \
+            -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+            .
+
+      - name: Build
+        run: cmake --build build --parallel $(nproc)
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure --no-tests=error
+
+  # ---------------------------------------------------------------------------
+  # Sanitizers: catch memory errors and UB that a normal build silently ignores.
+  # ---------------------------------------------------------------------------
+  sanitizers:
+    name: ASan + UBSan
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build liburing-dev libnuma-dev
+
+      - name: Configure
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer -g" \
+            -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined" \
+            .
+
+      - name: Build
+        run: cmake --build build --parallel $(nproc)
+
+      - name: Test
+        # detect_leaks=0 - there is a known shared_ptr reference cycle in
+        # SstableBuilder::finish() (the pending-write pump keeps itself alive).
+        # Turn leak detection on once that cycle is fixed.
+        env:
+          ASAN_OPTIONS: detect_leaks=0:abort_on_error=1
+          UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
+        run: ctest --test-dir build --output-on-failure --no-tests=error
+
+  # ---------------------------------------------------------------------------
+  # Static analysis. Advisory for now: it reports, but does not block merges.
+  # Remove "continue-on-error" when the codebase is clean.
+  # ---------------------------------------------------------------------------
+  clang-tidy:
+    name: clang-tidy (advisory)
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential clang-tidy cmake ninja-build liburing-dev libnuma-dev
+
+      - name: Configure compilation database
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            .
+
+      - name: Run clang-tidy
+        run: |
+          clang-tidy -p build \
+            --checks='-*,clang-analyzer-*,bugprone-*,performance-*' \
+            src/common/types.h \
+            src/io/async_file.cpp src/io/async_file.h \
+            src/io/event_loop.cpp src/io/event_loop.h \
+            src/io/io_buffer.cpp src/io/io_buffer.h \
+            src/io/io_uring_context.cpp src/io/io_uring_context.h \
+            src/storage/bloom_filter.cpp src/storage/bloom_filter.h \
+            src/storage/sstable.cpp src/storage/sstable.h
